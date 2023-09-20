@@ -23,13 +23,6 @@ const size_t XNB_COMPRESSED_HEADER_SIZE = 14;
 
 Xnb::Xnb(std::string path)
 {
-    // XXX: FUCKKKKK THIS IS WHY NOTHING WAS WORKING
-    // std::vector<uint8_t> out;
-    // std::ifstream file(path, std::ifstream::in | std::ifstream::binary);
-    // std::copy(std::istream_iterator<uint8_t>(file),
-    //           std::istream_iterator<uint8_t>(),
-    //           std::back_inserter(out));
-
     std::ifstream instream(path, std::ios::in | std::ios::binary);
     std::vector<uint8_t> out((std::istreambuf_iterator<char>(instream)),
                              std::istreambuf_iterator<char>());
