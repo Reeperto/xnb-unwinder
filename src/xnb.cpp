@@ -32,46 +32,44 @@ Xnb::Xnb(std::string path)
     read_header();
 
     if (compressed) {
-        LOG("Data is compressed. Begin decompressing");
+        INFO("Data is compressed with LZX. Decompressing . . .");
         decompress_lzx();
+        INFO("Data is uncompressed");
     }
 
     reader_count = buffer.read_7_bit_int();
-    LOG("Reader count: ", reader_count);
+    INFO("Reader count: ", reader_count);
 
     // Get all the type readers.
     for (int i = 0; i < reader_count; ++i) {
         std::string type = buffer.read_string();
+        DEBUG("Cursor: ", buffer.cursor);
         int version = buffer.read_i32();
-        LOG("Reader:\n", "\t\t", "name: ", type, "\n", "\t\t",
-            "version: ", version);
+        DEBUG("Reader: ", type);
     }
 
     shared_resource_count = buffer.read_7_bit_int();
-    LOG("Shared Resource Count: ", shared_resource_count);
+    DEBUG("Shared Resource Count: ", shared_resource_count);
+
+    // XXX: This was a big pain. The content data is polymorphic, so in
+    // order to determine what data lies first, a 7 bit int is used to
+    // index into the list of readers constructed above. Then the
+    // respective reader is used to actually read the data. Hence no need
+    // for any hacky +1 issues.
+    int read_index = buffer.read_7_bit_int();
 
     int surface_format = buffer.read_i32();
     int width = buffer.read_u32();
     int height = buffer.read_u32();
     int mipcount = buffer.read_u32();
 
-    LOG("Surface Format: ", surface_format);
-    LOG("Width: ", width);
-    LOG("Height: ", height);
-    LOG("Mip count: ", mipcount);
+    DEBUG("Surface Format: ", surface_format);
+    DEBUG("Width: ", width);
+    DEBUG("Height: ", height);
+    DEBUG("Mip count: ", mipcount);
 
     auto data_size = buffer.read_u32();
     auto data = buffer.read(data_size);
-
-    std::vector<uint8_t> image_data(data_size, 0);
-
-    for (int chunk_start = 0; chunk_start < data_size - 4;
-         chunk_start += 4) {
-        image_data[chunk_start] = data[chunk_start + 1];
-        image_data[chunk_start + 1] = data[chunk_start + 2];
-        image_data[chunk_start + 2] = data[chunk_start + 3];
-        image_data[chunk_start + 3] = data[chunk_start];
-    }
 
     stbi_write_png("out.png", width, height, 4, data.data(), 4 * width);
 }
@@ -82,6 +80,8 @@ void Xnb::read_header()
         valid = false;
         return;
     }
+
+    INFO("File is valid XNB");
 
     target = static_cast<char>(buffer.read_byte());
     format_version = static_cast<int>(buffer.read_byte());
@@ -135,8 +135,8 @@ void Xnb::decompress_lzx()
 {
     size_t compressed_todo = filesize - XNB_COMPRESSED_HEADER_SIZE;
 
-    LOG("File size: ", filesize,
-        ", Decompresed size: ", decompressed_filesize);
+    DEBUG("File size: ", filesize,
+          ", Decompresed size: ", decompressed_filesize);
 
     std::vector<uint8_t> decompressed_data(decompressed_filesize, 0);
 
@@ -171,7 +171,7 @@ void Xnb::decompress_lzx()
             break;
         }
 
-        LOG("Block Size: ", block_size, ", Frame Size: ", frame_size);
+        DEBUG("Block Size: ", block_size, ", Frame Size: ", frame_size);
 
         LZXdecompress(lzx, buffer.read(block_size).data(),
                       decompressed_data.data() + out_pos, block_size,
@@ -183,8 +183,5 @@ void Xnb::decompress_lzx()
     std::copy(decompressed_data.begin(), decompressed_data.end(),
               buffer.data.begin() + XNB_COMPRESSED_HEADER_SIZE);
 
-    LZXteardown(lzx);
     buffer.cursor = XNB_COMPRESSED_HEADER_SIZE;
-
-    LOG("Finished decompressing");
 }
