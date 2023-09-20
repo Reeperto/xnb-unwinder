@@ -1,7 +1,6 @@
 #include "buffer.h"
 
 #include "packing.h"
-#include "util.h"
 
 #include <cstdint>
 #include <ranges>
@@ -18,14 +17,14 @@ std::uint8_t Buffer::peek_byte() { return data[cursor]; }
 
 std::span<uint8_t> Buffer::read(size_t len)
 {
-    std::span slice{data.data() + cursor, cursor + len};
+    std::span slice{data.data() + cursor, len};
     cursor += len;
     return slice;
 }
 
 std::span<uint8_t> Buffer::peek(size_t len)
 {
-    return std::span(data.data() + cursor, cursor + len);
+    return std::span(data.data() + cursor, len);
 }
 
 void Buffer::seek(int bytes) { cursor += bytes; }
@@ -73,7 +72,5 @@ std::string Buffer::read_raw_string(size_t len)
 
 std::string Buffer::read_string()
 {
-    // FIX: This is a hack that may easily break on othe files. Figure out
-    // why it needs a +1
-    return read_raw_string(read_7_bit_int() + 1);
+    return read_raw_string(read_7_bit_int());
 }
