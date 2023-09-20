@@ -1,0 +1,5 @@
+.cache/clangd/index
+bin
+.DS_Store
+compile_commands.json
+out.png
