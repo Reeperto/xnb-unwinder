@@ -2,8 +2,13 @@
 
 #include <iostream>
 
+#define INFO(...) std::cout, " [INFO] ", __VA_ARGS__, std::endl
+
 #ifdef XNA_LOG
-#define LOG(...) std::cout, "[DEBUG] ", __VA_ARGS__, std::endl
+#define DEBUG(...) std::cout, "[DEBUG] ", __VA_ARGS__, std::endl
+#else
+#define DEBUG(...)
+#endif
 
 template <typename T>
 std::ostream &operator,(std::ostream &out, const T &t)
@@ -19,6 +24,3 @@ inline std::ostream &operator,(std::ostream &out,
     out << f;
     return out;
 }
-#else
-#define LOG(...)
-#endif
