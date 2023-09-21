@@ -1,7 +1,8 @@
-#include "xnb.h"
+#include "xnb.hpp"
 
 #include "lzx.h"
-#include "util.h"
+#include "readers/texture2d.hpp"
+#include "util.hpp"
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb_image_write.h"
@@ -59,22 +60,12 @@ Xnb::Xnb(std::string path)
     int read_index = buffer.read_7_bit_int();
     DEBUG("Read index: ", read_index);
 
-    int surface_format = buffer.read_i32();
-    int width = buffer.read_u32();
-    int height = buffer.read_u32();
-    int mipcount = buffer.read_u32();
-
-    DEBUG("Surface Format: ", surface_format);
-    DEBUG("Width: ", width);
-    DEBUG("Height: ", height);
-    DEBUG("Mip count: ", mipcount);
-
-    size_t data_size = buffer.read_u32();
-    auto data = buffer.copy_out(data_size);
+    auto texture = readers::read_texture2d(buffer);
 
     // Valid and working. Weird visual artificats are in the actual pixel
     // data itself.
-    stbi_write_png("out.png", width, height, 4, data.data(), 4 * width);
+    stbi_write_png("out.png", texture.width, texture.height, 4,
+                   texture.bytes.data(), 4 * texture.width);
 }
 
 void Xnb::read_header()
@@ -141,8 +132,7 @@ Buffer Xnb::decompress_lzx()
     DEBUG("File size: ", filesize,
           ", Decompresed size: ", decompressed_filesize);
 
-    std::vector<uint8_t> compressed_data =
-        buffer.copy_out(compressed_todo);
+    auto compressed_data = buffer.copy_out(compressed_todo);
 
     assert(compressed_data.size() ==
            filesize - XNB_COMPRESSED_HEADER_SIZE);

@@ -1,6 +1,6 @@
-#include "buffer.h"
+#include "buffer.hpp"
 
-#include "packing.h"
+#include "packing.hpp"
 
 #include <cstdint>
 #include <ranges>

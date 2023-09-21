@@ -1,7 +1,5 @@
-#include "buffer.h"
+#include "buffer.hpp"
 
-#include <_types/_uint8_t.h>
-#include <cassert>
 #include <string>
 
 struct Xnb

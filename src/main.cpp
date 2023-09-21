@@ -1,4 +1,4 @@
-#include "xnb.h"
+#include "xnb.hpp"
 
 #include <iostream>
 #include <string>
