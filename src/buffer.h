@@ -27,6 +27,7 @@ struct Buffer
 
     std::span<uint8_t> read(size_t len);
     std::span<uint8_t> peek(size_t len);
+    std::vector<uint8_t> copy_out(size_t len);
 
     std::uint32_t read_u32(std::endian endianess = std::endian::little);
 

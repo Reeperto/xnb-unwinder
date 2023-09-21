@@ -27,6 +27,14 @@ std::span<uint8_t> Buffer::peek(size_t len)
     return std::span(data.data() + cursor, len);
 }
 
+std::vector<uint8_t> Buffer::copy_out(size_t len)
+{
+    std::vector<uint8_t> buf(len, 0);
+    std::copy(data.begin() + cursor, data.begin() + cursor + len,
+              buf.begin());
+    return buf;
+}
+
 void Buffer::seek(int bytes) { cursor += bytes; }
 
 std::uint32_t Buffer::read_u32(std::endian endianess)

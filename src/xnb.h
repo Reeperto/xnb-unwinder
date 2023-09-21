@@ -33,5 +33,5 @@ struct Xnb
     Xnb(std::string path);
 
     void read_header();
-    void decompress_lzx();
+    Buffer decompress_lzx();
 };

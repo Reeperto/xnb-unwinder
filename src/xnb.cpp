@@ -13,6 +13,7 @@
 #include <format>
 #include <fstream>
 #include <iterator>
+#include <ostream>
 #include <vector>
 
 const uint8_t HIDEF_MASK = 0x1;
@@ -26,14 +27,13 @@ Xnb::Xnb(std::string path)
     std::ifstream instream(path, std::ios::in | std::ios::binary);
     std::vector<uint8_t> out((std::istreambuf_iterator<char>(instream)),
                              std::istreambuf_iterator<char>());
-
     buffer = Buffer(out);
 
     read_header();
 
     if (compressed) {
-        INFO("Data is compressed with LZX. Decompressing . . .");
-        decompress_lzx();
+        INFO("Data is compressed with LZX. Decompressing");
+        buffer = decompress_lzx();
         INFO("Data is uncompressed");
     }
 
@@ -57,6 +57,7 @@ Xnb::Xnb(std::string path)
     // respective reader is used to actually read the data. Hence no need
     // for any hacky +1 issues.
     int read_index = buffer.read_7_bit_int();
+    DEBUG("Read index: ", read_index);
 
     int surface_format = buffer.read_i32();
     int width = buffer.read_u32();
@@ -68,9 +69,11 @@ Xnb::Xnb(std::string path)
     DEBUG("Height: ", height);
     DEBUG("Mip count: ", mipcount);
 
-    auto data_size = buffer.read_u32();
-    auto data = buffer.read(data_size);
+    size_t data_size = buffer.read_u32();
+    auto data = buffer.copy_out(data_size);
 
+    // Valid and working. Weird visual artificats are in the actual pixel
+    // data itself.
     stbi_write_png("out.png", width, height, 4, data.data(), 4 * width);
 }
 
@@ -131,18 +134,27 @@ void Xnb::read_header()
  * is then assumed to be 32 kb or 0x8000.
  *
  */
-void Xnb::decompress_lzx()
+Buffer Xnb::decompress_lzx()
 {
     size_t compressed_todo = filesize - XNB_COMPRESSED_HEADER_SIZE;
 
     DEBUG("File size: ", filesize,
           ", Decompresed size: ", decompressed_filesize);
 
+    std::vector<uint8_t> compressed_data =
+        buffer.copy_out(compressed_todo);
+
+    assert(compressed_data.size() ==
+           filesize - XNB_COMPRESSED_HEADER_SIZE);
+
+    buffer.cursor = XNB_COMPRESSED_HEADER_SIZE;
+
     std::vector<uint8_t> decompressed_data(decompressed_filesize, 0);
 
     auto lzx = LZXinit(16);
 
     size_t out_pos = 0;
+    size_t pos = 0;
 
     uint8_t hi;
     uint8_t lo;
@@ -150,20 +162,20 @@ void Xnb::decompress_lzx()
     int block_size;
     int frame_size;
 
-    while (buffer.cursor - XNB_COMPRESSED_HEADER_SIZE < compressed_todo) {
+    while (pos < compressed_todo) {
 
-        hi = buffer.read_byte();
-        lo = buffer.read_byte();
+        hi = compressed_data[pos++];
+        lo = compressed_data[pos++];
 
         block_size = (hi << 8) | lo;
         frame_size = 0x8000;
 
         if (hi == 0xFF) {
             hi = lo;
-            lo = buffer.read_byte();
+            lo = compressed_data[pos++];
             frame_size = (hi << 8) | lo;
-            hi = buffer.read_byte();
-            lo = buffer.read_byte();
+            hi = compressed_data[pos++];
+            lo = compressed_data[pos++];
             block_size = (hi << 8) | lo;
         }
 
@@ -173,15 +185,20 @@ void Xnb::decompress_lzx()
 
         DEBUG("Block Size: ", block_size, ", Frame Size: ", frame_size);
 
-        LZXdecompress(lzx, buffer.read(block_size).data(),
+        LZXdecompress(lzx, compressed_data.data() + pos,
                       decompressed_data.data() + out_pos, block_size,
                       frame_size);
 
         out_pos += frame_size;
+        pos += block_size;
     }
 
-    std::copy(decompressed_data.begin(), decompressed_data.end(),
-              buffer.data.begin() + XNB_COMPRESSED_HEADER_SIZE);
+    LZXteardown(lzx);
+    return Buffer(decompressed_data);
 
-    buffer.cursor = XNB_COMPRESSED_HEADER_SIZE;
+    // XXX: Copying the decompressed data back into the main buffer lead to
+    // bad pixel data and weird undefined behavior
+    //
+    // std::copy(decompressed_data.begin(), decompressed_data.end(),
+    //           buffer.data.begin() + XNB_COMPRESSED_HEADER_SIZE);
 }
