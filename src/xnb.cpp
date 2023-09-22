@@ -44,7 +44,6 @@ Xnb::Xnb(std::string path)
     // Get all the type readers.
     for (int i = 0; i < reader_count; ++i) {
         std::string type = buffer.read_string();
-        DEBUG("Cursor: ", buffer.cursor);
         int version = buffer.read_i32();
         DEBUG("Reader: ", type);
     }
@@ -134,8 +133,6 @@ Buffer Xnb::decompress_lzx()
 
     auto compressed_data = buffer.copy_out(compressed_todo);
 
-    assert(compressed_data.size() ==
-           filesize - XNB_COMPRESSED_HEADER_SIZE);
 
     buffer.cursor = XNB_COMPRESSED_HEADER_SIZE;
 
