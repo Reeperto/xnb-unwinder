@@ -1,13 +1,14 @@
 #pragma once
 
 #include "buffer.hpp"
+#include "readers/reader.hpp"
 
 #include <cstdint>
 #include <vector>
 
 namespace readers
 {
-struct Texture2D
+struct Texture2DReader : Reader
 {
     int surface_format; // Could be an enum
     int width;
@@ -15,8 +16,12 @@ struct Texture2D
     int mipcount;
     size_t data_size;
     std::vector<uint8_t> bytes;
-};
 
-Texture2D read_texture2d(Buffer buffer);
+    Texture2DReader();
+    ~Texture2DReader(){};
+
+    virtual void read(Buffer buffer);
+    virtual ReaderType type();
+};
 
 } // namespace readers

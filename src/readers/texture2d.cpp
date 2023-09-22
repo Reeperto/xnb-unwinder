@@ -1,25 +1,30 @@
 #include "readers/texture2d.hpp"
 
+#include "reader.hpp"
 #include "util.hpp"
 
 namespace readers
 {
-Texture2D read_texture2d(Buffer buffer)
+Texture2DReader::Texture2DReader()
+    : surface_format(0), width(0), height(0), mipcount(0), data_size(0),
+      bytes{}
 {
-    Texture2D texture;
+}
 
-    texture.surface_format = buffer.read_i32();
-    texture.width = buffer.read_u32();
-    texture.height = buffer.read_u32();
-    texture.mipcount = buffer.read_u32();
-    texture.data_size = buffer.read_u32();
-    texture.bytes = buffer.copy_out(texture.data_size);
+ReaderType Texture2DReader::type() { return Texture2D; }
 
-    DEBUG("Surface Format: ", texture.surface_format);
-    DEBUG("Width: ", texture.width);
-    DEBUG("Height: ", texture.height);
-    DEBUG("Mip count: ", texture.mipcount);
+void Texture2DReader::read(Buffer buffer)
+{
+    surface_format = buffer.read_i32();
+    width = buffer.read_u32();
+    height = buffer.read_u32();
+    mipcount = buffer.read_u32();
+    data_size = buffer.read_u32();
+    bytes = buffer.copy_out(data_size);
 
-    return texture;
+    DEBUG("Surface Format: ", surface_format);
+    DEBUG("Width: ", width);
+    DEBUG("Height: ", height);
+    DEBUG("Mip count: ", mipcount);
 }
 } // namespace readers

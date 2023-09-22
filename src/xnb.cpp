@@ -4,9 +4,6 @@
 #include "readers/texture2d.hpp"
 #include "util.hpp"
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
-
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -16,6 +13,9 @@
 #include <iterator>
 #include <ostream>
 #include <vector>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 
 const uint8_t HIDEF_MASK = 0x1;
 const uint8_t COMPRESSED_LZX_MASK = 0x80;
@@ -41,11 +41,18 @@ Xnb::Xnb(std::string path)
     reader_count = buffer.read_7_bit_int();
     INFO("Reader count: ", reader_count);
 
+    std::vector<readers::Reader *> reader_list(reader_count);
+
     // Get all the type readers.
     for (int i = 0; i < reader_count; ++i) {
         std::string type = buffer.read_string();
         int version = buffer.read_i32();
         DEBUG("Reader: ", type);
+
+        if (type.starts_with(
+                "Microsoft.Xna.Framework.Content.Texture2DReader")) {
+            reader_list.push_back(new readers::Texture2DReader);
+        }
     }
 
     shared_resource_count = buffer.read_7_bit_int();
@@ -56,15 +63,19 @@ Xnb::Xnb(std::string path)
     // index into the list of readers constructed above. Then the
     // respective reader is used to actually read the data. Hence no need
     // for any hacky +1 issues.
+
     int read_index = buffer.read_7_bit_int();
     DEBUG("Read index: ", read_index);
 
-    auto texture = readers::read_texture2d(buffer);
+    auto reader = reader_list[read_index];
+    reader->read(buffer);
+
+    auto texture = (readers::Texture2DReader *)reader;
 
     // Valid and working. Weird visual artificats are in the actual pixel
     // data itself.
-    stbi_write_png("out.png", texture.width, texture.height, 4,
-                   texture.bytes.data(), 4 * texture.width);
+    stbi_write_png("out.png", texture->width, texture->height, 4,
+                   texture->bytes.data(), 4 * texture->width);
 }
 
 void Xnb::read_header()
@@ -131,8 +142,7 @@ Buffer Xnb::decompress_lzx()
     DEBUG("File size: ", filesize,
           ", Decompresed size: ", decompressed_filesize);
 
-    auto compressed_data = buffer.copy_out(compressed_todo);
-
+    auto compressed_data = buffer.peek(compressed_todo);
 
     buffer.cursor = XNB_COMPRESSED_HEADER_SIZE;
 
@@ -182,10 +192,4 @@ Buffer Xnb::decompress_lzx()
 
     LZXteardown(lzx);
     return Buffer(decompressed_data);
-
-    // XXX: Copying the decompressed data back into the main buffer lead to
-    // bad pixel data and weird undefined behavior
-    //
-    // std::copy(decompressed_data.begin(), decompressed_data.end(),
-    //           buffer.data.begin() + XNB_COMPRESSED_HEADER_SIZE);
 }
